@@ -120,10 +120,6 @@
 #  undef MBEDTLS_SHA512_USE_A64_CRYPTO_IF_PRESENT
 #endif
 
-#if defined (CONFIG_ENABLE_LALU_SHA2)
-#include "lalu_sha2.h"
-#endif
-
 #if defined(MBEDTLS_SHA512_USE_A64_CRYPTO_IF_PRESENT)
 /*
  * Capability detection code comes early, so we can disable
@@ -291,9 +287,7 @@ int mbedtls_sha512_starts(mbedtls_sha512_context *ctx, int is384)
 #if defined(MBEDTLS_SHA384_C)
     ctx->is384 = is384;
 #endif
-#if defined (CONFIG_ENABLE_LALU_SHA2)
-    lalu_sha512_starts_ret(is384);
-#endif   
+
     return 0;
 }
 
@@ -588,12 +582,12 @@ int mbedtls_internal_sha512_process_a64_crypto(mbedtls_sha512_context *ctx,
 #undef MBEDTLS_POP_TARGET_PRAGMA
 #endif
 
-#if defined (CONFIG_ENABLE_LALU_SHA2)
+
 #if !defined(MBEDTLS_SHA512_USE_A64_CRYPTO_IF_PRESENT)
 #define mbedtls_internal_sha512_process_many_c mbedtls_internal_sha512_process_many
 #define mbedtls_internal_sha512_process_c      mbedtls_internal_sha512_process
 #endif
-#endif
+
 
 #if !defined(MBEDTLS_SHA512_PROCESS_ALT) && !defined(MBEDTLS_SHA512_USE_A64_CRYPTO_ONLY)
 
@@ -698,7 +692,7 @@ int mbedtls_internal_sha512_process_c(mbedtls_sha512_context *ctx,
 
 #endif /* !MBEDTLS_SHA512_PROCESS_ALT && !MBEDTLS_SHA512_USE_A64_CRYPTO_ONLY */
 
-#if defined (CONFIG_ENABLE_LALU_SHA2)
+
 #if !defined(MBEDTLS_SHA512_USE_A64_CRYPTO_ONLY)
 
 static size_t mbedtls_internal_sha512_process_many_c(
@@ -721,7 +715,7 @@ static size_t mbedtls_internal_sha512_process_many_c(
 }
 
 #endif /* !MBEDTLS_SHA512_USE_A64_CRYPTO_ONLY */
-#endif
+
 
 #if defined(MBEDTLS_SHA512_USE_A64_CRYPTO_IF_PRESENT)
 
@@ -738,7 +732,6 @@ static int mbedtls_a64_crypto_sha512_has_support(void)
     return supported;
 }
 
-#if defined (CONFIG_ENABLE_LALU_SHA2)
 static size_t mbedtls_internal_sha512_process_many(mbedtls_sha512_context *ctx,
                                                    const uint8_t *msg, size_t len)
 {
@@ -748,7 +741,6 @@ static size_t mbedtls_internal_sha512_process_many(mbedtls_sha512_context *ctx,
         return mbedtls_internal_sha512_process_many_c(ctx, msg, len);
     }
 }
-#endif
 
 int mbedtls_internal_sha512_process(mbedtls_sha512_context *ctx,
                                     const unsigned char data[SHA512_BLOCK_SIZE])
@@ -772,10 +764,7 @@ int mbedtls_sha512_update(mbedtls_sha512_context *ctx,
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
     size_t fill;
     unsigned int left;
-#if defined (CONFIG_ENABLE_LALU_SHA2)
-    uint32_t blk_size;
-#endif
-    
+
     if (ilen == 0) {
         return 0;
     }
@@ -791,25 +780,17 @@ int mbedtls_sha512_update(mbedtls_sha512_context *ctx,
 
     if (left && ilen >= fill) {
         memcpy((void *) (ctx->buffer + left), input, fill);
-#if defined (CONFIG_ENABLE_LALU_SHA2)
-        lalu_internal_sha512_process(ctx, ctx->buffer, 0x01);
-#else
+
         if ((ret = mbedtls_internal_sha512_process(ctx, ctx->buffer)) != 0) {
             return ret;
         }
-#endif
+
         input += fill;
         ilen  -= fill;
         left = 0;
     }
 
     while (ilen >= SHA512_BLOCK_SIZE) {
-#if defined (CONFIG_ENABLE_LALU_SHA2)
-        blk_size = ilen >> 7;
-        lalu_internal_sha512_process(ctx, input, blk_size);
-        input += (blk_size << 7);
-        ilen -= (blk_size << 7);
-#else
         size_t processed =
             mbedtls_internal_sha512_process_many(ctx, input, ilen);
         if (processed < SHA512_BLOCK_SIZE) {
@@ -818,7 +799,6 @@ int mbedtls_sha512_update(mbedtls_sha512_context *ctx,
 
         input += processed;
         ilen  -= processed;
-#endif
     }
 
     if (ilen > 0) {
@@ -835,12 +815,10 @@ int mbedtls_sha512_finish(mbedtls_sha512_context *ctx,
                           unsigned char *output)
 {
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-    int truncated = 0;
-#if defined (CONFIG_ENABLE_LALU_SHA2)
-    lalu_internal_sha512_finish(ctx, ctx->buffer);
-#else
     unsigned used;
     uint64_t high, low;
+    int truncated = 0;
+
     /*
      * Add padding: 0x80 then 0x00 until 16 bytes remain for the length
      */
@@ -875,7 +853,7 @@ int mbedtls_sha512_finish(mbedtls_sha512_context *ctx,
     if ((ret = mbedtls_internal_sha512_process(ctx, ctx->buffer)) != 0) {
         goto exit;
     }
-#endif
+
     /*
      * Output final state
      */
@@ -896,9 +874,7 @@ int mbedtls_sha512_finish(mbedtls_sha512_context *ctx,
 
     ret = 0;
 
-#if !defined(CONFIG_ENABLE_LALU_SHA2)
 exit:
-#endif
     mbedtls_sha512_free(ctx);
     return ret;
 }

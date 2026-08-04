@@ -131,10 +131,6 @@
 #  undef MBEDTLS_SHA256_USE_ARMV8_A_CRYPTO_IF_PRESENT
 #endif
 
-#if defined (CONFIG_ENABLE_LALU_SHA2)
-#include "lalu_sha2.h"
-#endif
-
 #if defined(MBEDTLS_SHA256_USE_ARMV8_A_CRYPTO_IF_PRESENT)
 /*
  * Capability detection code comes early, so we can disable
@@ -295,10 +291,7 @@ int mbedtls_sha256_starts(mbedtls_sha256_context *ctx, int is224)
 #if defined(MBEDTLS_SHA224_C)
     ctx->is224 = is224;
 #endif
-#if defined (CONFIG_ENABLE_LALU_SHA2)
-    lalu_sha256_starts_ret(is224);
-#endif    
-    
+
     return 0;
 }
 
@@ -453,12 +446,12 @@ int mbedtls_internal_sha256_process_a64_crypto(mbedtls_sha256_context *ctx,
 #endif
 #undef MBEDTLS_POP_TARGET_PRAGMA
 #endif
-#if !defined (CONFIG_ENABLE_LALU_SHA2)
+
 #if !defined(MBEDTLS_SHA256_USE_ARMV8_A_CRYPTO_IF_PRESENT)
 #define mbedtls_internal_sha256_process_many_c mbedtls_internal_sha256_process_many
 #define mbedtls_internal_sha256_process_c      mbedtls_internal_sha256_process
 #endif
-#endif
+
 
 #if !defined(MBEDTLS_SHA256_PROCESS_ALT) && \
     !defined(MBEDTLS_SHA256_USE_ARMV8_A_CRYPTO_ONLY)
@@ -583,7 +576,7 @@ int mbedtls_internal_sha256_process_c(mbedtls_sha256_context *ctx,
 
 #endif /* !MBEDTLS_SHA256_PROCESS_ALT && !MBEDTLS_SHA256_USE_ARMV8_A_CRYPTO_ONLY */
 
-#if !defined (CONFIG_ENABLE_LALU_SHA2)
+
 #if !defined(MBEDTLS_SHA256_USE_ARMV8_A_CRYPTO_ONLY)
 
 static size_t mbedtls_internal_sha256_process_many_c(
@@ -606,7 +599,7 @@ static size_t mbedtls_internal_sha256_process_many_c(
 }
 
 #endif /* !MBEDTLS_SHA256_USE_ARMV8_A_CRYPTO_ONLY */
-#endif
+
 
 #if defined(MBEDTLS_SHA256_USE_ARMV8_A_CRYPTO_IF_PRESENT)
 
@@ -656,9 +649,7 @@ int mbedtls_sha256_update(mbedtls_sha256_context *ctx,
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
     size_t fill;
     uint32_t left;
-#if defined (CONFIG_ENABLE_LALU_SHA2)
-    uint32_t blk_size;
-#endif
+
     if (ilen == 0) {
         return 0;
     }
@@ -675,27 +666,17 @@ int mbedtls_sha256_update(mbedtls_sha256_context *ctx,
 
     if (left && ilen >= fill) {
         memcpy((void *) (ctx->buffer + left), input, fill);
-#if defined (CONFIG_ENABLE_LALU_SHA2)
-        if ((ret = lalu_internal_sha256_process(ctx, ctx->buffer, 0x1)) != 0) {
-            return ret;
-        }
-#else
+
         if ((ret = mbedtls_internal_sha256_process(ctx, ctx->buffer)) != 0) {
             return ret;
         }
-#endif
+
         input += fill;
         ilen  -= fill;
         left = 0;
     }
 
     while (ilen >= SHA256_BLOCK_SIZE) {
-#if defined (CONFIG_ENABLE_LALU_SHA2)
-        blk_size = ilen >> 6;
-        lalu_internal_sha256_process(ctx, input, blk_size);
-        input += (blk_size << 6);
-        ilen -= (blk_size << 6);
-#else
         size_t processed =
             mbedtls_internal_sha256_process_many(ctx, input, ilen);
         if (processed < SHA256_BLOCK_SIZE) {
@@ -704,7 +685,6 @@ int mbedtls_sha256_update(mbedtls_sha256_context *ctx,
 
         input += processed;
         ilen  -= processed;
-#endif
     }
 
     if (ilen > 0) {
@@ -721,13 +701,10 @@ int mbedtls_sha256_finish(mbedtls_sha256_context *ctx,
                           unsigned char *output)
 {
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-    int truncated = 0;
-    
-#if defined (CONFIG_ENABLE_LALU_SHA2)
-    lalu_internal_sha256_finish(ctx, ctx->buffer);
-#else
     uint32_t used;
     uint32_t high, low;
+    int truncated = 0;
+
     /*
      * Add padding: 0x80 then 0x00 until 8 bytes remain for the length
      */
@@ -762,7 +739,7 @@ int mbedtls_sha256_finish(mbedtls_sha256_context *ctx,
     if ((ret = mbedtls_internal_sha256_process(ctx, ctx->buffer)) != 0) {
         goto exit;
     }
-#endif
+
     /*
      * Output final state
      */
@@ -783,9 +760,7 @@ int mbedtls_sha256_finish(mbedtls_sha256_context *ctx,
 
     ret = 0;
 
-#if !defined(CONFIG_ENABLE_LALU_SHA2)
 exit:
-#endif
     mbedtls_sha256_free(ctx);
     return ret;
 }

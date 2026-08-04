@@ -71,6 +71,17 @@ typedef struct mbedtls_gcm_context {
                                                               #MBEDTLS_GCM_ENCRYPT or
                                                               #MBEDTLS_GCM_DECRYPT. */
     unsigned char MBEDTLS_PRIVATE(acceleration);             /*!< The acceleration to use. */
+    /* --- Realtek LALU GCM extension (used only by lalu_aes.c when
+     *     CONFIG_ENABLE_LALU_GCM/AES is enabled). Appended at the end so the
+     *     stock field offsets above are unchanged; kept unconditional so every
+     *     TU that includes this public header agrees on sizeof(mbedtls_gcm_context). */
+    unsigned char key[32];                                   /*!< LALU: raw key bytes (keybits/8, max 32). */
+    unsigned int  rk;                                        /*!< LALU: key slot index. */
+    unsigned int  kb;                                        /*!< LALU: key length in bits. */
+    uint32_t      out_addr;                                  /*!< LALU: output buffer address across updates. */
+    size_t        rest_len;                                  /*!< LALU: leftover (sub-block) byte count. */
+    uint32_t      aes_config;                                /*!< LALU: cached AES engine config register. */
+    uint32_t      iv[4];                                     /*!< LALU: IV/counter block (mixed-mode). */
 }
 mbedtls_gcm_context;
 

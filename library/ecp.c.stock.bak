@@ -72,10 +72,6 @@
 
 #include <string.h>
 
-#if defined(CONFIG_ENABLE_LALU_PKE_ECDSA)
-#include "lalu_pke.h"
-#endif
-
 #if !defined(MBEDTLS_ECP_ALT)
 
 #include "mbedtls/platform.h"
@@ -1349,7 +1345,7 @@ cleanup:
     return ret;
 #endif /* !defined(MBEDTLS_ECP_NO_FALLBACK) || !defined(MBEDTLS_ECP_NORMALIZE_JAC_ALT) */
 }
-#if !defined(CONFIG_ENABLE_LALU_PKE_ECDSA)
+
 /*
  * Normalize jacobian coordinates of an array of (pointers to) points,
  * using Montgomery's trick to perform only one inversion mod P.
@@ -1472,7 +1468,6 @@ cleanup:
     mbedtls_mpi_free(&tmp);
     return ret;
 }
-#endif /* !CONFIG_ENABLE_LALU_PKE_ECDSA */
 
 /*
  * Point doubling R = 2 P, Jacobian coordinates
@@ -1676,7 +1671,6 @@ cleanup:
 #endif /* !defined(MBEDTLS_ECP_NO_FALLBACK) || !defined(MBEDTLS_ECP_ADD_MIXED_ALT) */
 }
 
-#if !defined(CONFIG_ENABLE_LALU_PKE_ECDSA)
 /*
  * Randomize jacobian coordinates:
  * (X, Y, Z) -> (l^2 X, l^3 Y, l Z) for random l
@@ -2410,9 +2404,9 @@ cleanup:
 
     return ret;
 }
-#endif /* CONFIG_ENABLE_LALU_PKE_ECDSA */
+
 #endif /* MBEDTLS_ECP_SHORT_WEIERSTRASS_ENABLED */
-#if !defined(CONFIG_ENABLE_LALU_PKE_ECDSA)
+
 #if defined(MBEDTLS_ECP_MONTGOMERY_ENABLED)
 /*
  * For Montgomery curves, we do all the internal arithmetic in projective
@@ -2620,7 +2614,7 @@ cleanup:
     mpi_free_many(tmp, sizeof(tmp) / sizeof(mbedtls_mpi));
     return ret;
 }
-#endif /* CONFIG_ENABLE_LALU_PKE_ECDSA */
+
 #endif /* MBEDTLS_ECP_MONTGOMERY_ENABLED */
 
 /*
@@ -2668,13 +2662,6 @@ static int ecp_mul_restartable_internal(mbedtls_ecp_group *grp, mbedtls_ecp_poin
         MBEDTLS_MPI_CHK(mbedtls_ecp_check_pubkey(grp, P));
     }
 
-#if defined(CONFIG_ENABLE_LALU_PKE_ECDSA)
-    (void)f_rng;
-    (void)p_rng;
-    if ((ret = lalu_ecp_mul_simplified(grp, R, m, P)) != 0) {
-        goto cleanup;
-    }
-#else
     ret = MBEDTLS_ERR_ECP_BAD_INPUT_DATA;
 #if defined(MBEDTLS_ECP_MONTGOMERY_ENABLED)
     if (mbedtls_ecp_get_type(grp) == MBEDTLS_ECP_TYPE_MONTGOMERY) {
@@ -2686,7 +2673,7 @@ static int ecp_mul_restartable_internal(mbedtls_ecp_group *grp, mbedtls_ecp_poin
         MBEDTLS_MPI_CHK(ecp_mul_comb(grp, R, m, P, f_rng, p_rng, rs_ctx));
     }
 #endif
-#endif /* CONFIG_ENABLE_LALU_PKE_ECDSA */
+
 cleanup:
 
 #if defined(MBEDTLS_ECP_INTERNAL_ALT)

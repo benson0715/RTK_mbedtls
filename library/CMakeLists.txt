@@ -92,6 +92,21 @@ set(src_crypto
     timing.c
     version.c
     version_features.c
+    # --- Realtek LALU HW crypto acceleration ---
+    #   SHA-2: enabled (sha256.c/sha512.c routed to LALU).
+    #   PKE/ECP: enabling ecp.c scalar-mul via lalu_ecp_mul_simplified (uses only
+    #            standard mbedtls_ecp_group fields, unlike GCM). ecdsa.c hooks not
+    #            yet restored, so CONFIG_ENABLE_LALU_PKE_ECDSA only affects ecp.c.
+    #   GCM/AES: still gated off (lalu_aes.c needs custom mbedtls_gcm_context fields
+    #            absent from this header set — see graft notes).
+    lalu/lalu_sha2.c
+    lalu/lalu_dmac.c
+    lalu/lalu_ecdsa_ecp.c
+    lalu/lalu_pke_utils.c
+    lalu/lalu_pke_ecdsa.c   # provides __is_hash_in_advance_enabled global needed by lalu_pke_utils.c
+    lalu/lalu_aes.c         # GCM/AES: lalu_gcm_setkey/starts/update_ad/update/finish
+    lalu/lalu_aes_util.c
+    lalu/lalu_key_mgr.c     # lalu_key_mgr_program_key / load_key_to_engine used by lalu_aes.c
 )
 
 set(src_x509
@@ -350,6 +365,16 @@ foreach(target IN LISTS target_libraries)
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 endforeach(target)
+
+# --- Realtek LALU HW crypto acceleration: route mbedcrypto SHA-2 to the LALU engine ---
+target_include_directories(${mbedcrypto_target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lalu/)
+target_compile_definitions(${mbedcrypto_target} PRIVATE
+    MBEDTLS_ALLOW_PRIVATE_ACCESS   # lalu drivers touch mbedtls struct fields by plain name (they do not #include common.h)
+    CONFIG_ENABLE_LALU_SHA2        # sha256.c / sha512.c
+    CONFIG_ENABLE_LALU_PKE_ECDSA   # ecp.c scalar-mul -> lalu_ecp_mul_simplified (lalu_ecdsa_ecp.c + lalu_pke_utils.c)
+    # CONFIG_ENABLE_LALU_GCM       # kept in SOFTWARE: LALU GCM HW path bus-stalls at runtime (unresolved)
+    CONFIG_ENABLE_LALU_AES         # enables lalu_aes.h / lalu_aes.c AES engine driver
+)
 
 set(lib_target "${MBEDTLS_TARGET_PREFIX}lib")
 

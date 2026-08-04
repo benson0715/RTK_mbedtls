@@ -39,10 +39,6 @@
 #include "aesce.h"
 #endif
 
-#if defined(CONFIG_ENABLE_LALU_AES)
-#include "lalu_aes.h"
-#endif  /* CONFIG_ENABLE_LALU_AES */
-
 #if !defined(MBEDTLS_GCM_ALT)
 
 /* Used to select the acceleration mechanism */
@@ -169,11 +165,7 @@ int mbedtls_gcm_setkey(mbedtls_gcm_context *ctx,
                        unsigned int keybits)
 {
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-#if defined(CONFIG_ENABLE_LALU_GCM)
-    if ((ret = lalu_gcm_setkey(ctx, cipher, key, keybits)) != 0) {
-        return ret;
-    }
-#else
+
     if (keybits != 128 && keybits != 192 && keybits != 256) {
         return MBEDTLS_ERR_GCM_BAD_INPUT;
     }
@@ -216,11 +208,10 @@ int mbedtls_gcm_setkey(mbedtls_gcm_context *ctx,
     if ((ret = gcm_gen_table(ctx)) != 0) {
         return ret;
     }
-#endif  /* CONFIG_ENABLE_LALU_GCM */
+
     return 0;
 }
 
-#if !defined(CONFIG_ENABLE_LALU_GCM)
 #if defined(MBEDTLS_GCM_LARGE_TABLE)
 static const uint16_t last8[256] = {
     0x0000, 0xc201, 0x8403, 0x4602, 0x0807, 0xca06, 0x8c04, 0x4e05,
@@ -382,19 +373,11 @@ static void gcm_mult(mbedtls_gcm_context *ctx, const unsigned char x[16],
 
     return;
 }
-#endif
 
 int mbedtls_gcm_starts(mbedtls_gcm_context *ctx,
                        int mode,
                        const unsigned char *iv, size_t iv_len)
 {
-#if defined(CONFIG_ENABLE_LALU_GCM)
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-    
-    ret = lalu_gcm_starts(ctx, mode, iv, iv_len);
-    
-    return ret;
-#else
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
     unsigned char work_buf[16];
     const unsigned char *p;
@@ -462,7 +445,6 @@ int mbedtls_gcm_starts(mbedtls_gcm_context *ctx,
     }
 
     return 0;
-#endif  /* CONFIG_ENABLE_LALU_GCM */
 }
 
 /**
@@ -485,13 +467,6 @@ int mbedtls_gcm_starts(mbedtls_gcm_context *ctx,
 int mbedtls_gcm_update_ad(mbedtls_gcm_context *ctx,
                           const unsigned char *add, size_t add_len)
 {
-#if defined(CONFIG_ENABLE_LALU_GCM)
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-    
-    ret = lalu_gcm_update_ad(ctx, add, add_len);
-    
-    return ret;
-#else
     const unsigned char *p;
     size_t use_len, offset;
     uint64_t new_add_len;
@@ -544,7 +519,6 @@ int mbedtls_gcm_update_ad(mbedtls_gcm_context *ctx,
     }
 
     return 0;
-#endif
 }
 
 /* Increment the counter. */
@@ -592,16 +566,6 @@ int mbedtls_gcm_update(mbedtls_gcm_context *ctx,
                        unsigned char *output, size_t output_size,
                        size_t *output_length)
 {
-#if defined(CONFIG_ENABLE_LALU_GCM)
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-    
-    ret = lalu_gcm_update(ctx,
-                        input, input_length,
-                        output, output_size,
-                        output_length);
-    
-    return ret;
-#else
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
     const unsigned char *p = input;
     unsigned char *out_p = output;
@@ -681,7 +645,6 @@ int mbedtls_gcm_update(mbedtls_gcm_context *ctx,
 
     mbedtls_platform_zeroize(ectr, sizeof(ectr));
     return 0;
-#endif
 }
 
 int mbedtls_gcm_finish(mbedtls_gcm_context *ctx,
@@ -689,16 +652,6 @@ int mbedtls_gcm_finish(mbedtls_gcm_context *ctx,
                        size_t *output_length,
                        unsigned char *tag, size_t tag_len)
 {
-#if defined(CONFIG_ENABLE_LALU_GCM)
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-    
-    ret = lalu_gcm_finish(ctx,
-                        output, output_size,
-                        output_length,
-                        tag, tag_len);
-    
-    return 0;
-#else
     unsigned char work_buf[16];
     uint64_t orig_len;
     uint64_t orig_add_len;
@@ -745,7 +698,6 @@ int mbedtls_gcm_finish(mbedtls_gcm_context *ctx,
     }
 
     return 0;
-#endif
 }
 
 int mbedtls_gcm_crypt_and_tag(mbedtls_gcm_context *ctx,

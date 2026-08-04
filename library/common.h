@@ -104,7 +104,9 @@ extern void (*mbedtls_test_hook_test_fail)(const char *test, int line, const cha
  * Although structs defined in header files are publicly available,
  * their members are private and should not be accessed by the user.
  */
+#ifndef MBEDTLS_ALLOW_PRIVATE_ACCESS
 #define MBEDTLS_ALLOW_PRIVATE_ACCESS
+#endif
 
 /**
  * \brief       Securely zeroize a buffer then free it.
