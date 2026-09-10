@@ -92,6 +92,8 @@ set(src_crypto
     timing.c
     version.c
     version_features.c
+    # --- Realtek PSA Crypto API ---
+    rtk_psa_crypto/rtk_psa_crypto.c
     # --- Realtek LALU HW crypto acceleration ---
     #   SHA-2: enabled (sha256.c/sha512.c routed to LALU).
     #   PKE/ECP: enabling ecp.c scalar-mul via lalu_ecp_mul_simplified (uses only
